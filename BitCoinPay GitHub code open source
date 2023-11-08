@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.21;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract BitcoinPay is ERC20, Ownable {
+    uint256 private constant MAX_SUPPLY = 1_000_000_000_000 * 10**18; // 1 trillion tokens
+    uint256 private constant BURN_RATE = 5; // 0.05%
+    uint256 private constant MAIN_ACCOUNT_RATE = 5; // 0.05%
+
+    constructor() ERC20("BitcoinPay", "BTCP") {
+        _mint(_msgSender(), MAX_SUPPLY);
+    }
+
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
+        _transfer(_msgSender(), recipient, amount);
+        _applyBurnAndMainAccountFee(amount);
+        return true;
+    }
+
+    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
+        _transfer(sender, recipient, amount);
+        _applyBurnAndMainAccountFee(amount);
+        _approve(sender, _msgSender(), allowance(sender, _msgSender()) - amount);
+        return true;
+    }
+
+    function _applyBurnAndMainAccountFee(uint256 amount) internal {
+        if (_msgSender() != owner()) {
+            uint256 burnAmount = (amount * BURN_RATE) / 10000;
+            uint256 mainAccountAmount = (amount * MAIN_ACCOUNT_RATE) / 10000;
+
+            _burn(_msgSender(), burnAmount);
+            _transfer(_msgSender(), owner(), mainAccountAmount);
+        }
+    }
+}
